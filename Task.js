@@ -1,63 +1,92 @@
 
-const buttons = document.querySelectorAll('.button-option');
-const restartButton = document.getElementById('restart');
-const popup = document.getElementById('popup');
-const message = document.getElementById('message');
-
-let currentPlayer = 'X';
-let gameActive = true;
-
-function handleButtonClick() {
-    if (gameActive && !this.textContent) {
-        this.textContent = currentPlayer;
-        if (checkWin()) {
-            gameActive = false; 
-            message.textContent = ` congratulations ${currentPlayer} wins! 🎉`;
-            togglePopup();
-        } else if (checkDraw()) {
-            gameActive = false;
-            message.textContent = 'oops! It\'s a draw! Try again 😕';
-            togglePopup();
-        } else {
-            currentPlayer = currentPlayer === 'X' ? 'O' : 'X';
-        }
+document.getElementById('city').addEventListener('input', function () {
+    var city = this.value;
+    getWeather(city);
+  });
+  
+  async function getWeather() {
+    try {
+        var city = document.getElementById('city').value;
+        console.log('Şəhər adı:', city);
+  
+        const response = await axios.get('https://api.openweathermap.org/data/2.5/forecast', {
+            params: {
+                q: city,
+                appid: '54a57bc234ad752a4f59e59cd372201d',
+                units: 'metric'
+            },
+        });
+        const currentTemperature = response.data.list[0].main.temp;
+  
+        document.querySelector('.weather-temp').textContent = Math.round(currentTemperature) + 'ºC';
+  
+        const forecastData = response.data.list;
+  
+        const dailyForecast = {};
+        forecastData.forEach((data) => {
+            const day = new Date(data.dt * 1000).toLocaleDateString('en-US', { weekday: 'long' });
+            if (!dailyForecast[day]) {
+                dailyForecast[day] = {
+                    minTemp: data.main.temp_min,
+                    maxTemp: data.main.temp_max,
+                    description: data.weather[0].description,
+                    humidity: data.main.humidity,
+                    windSpeed: data.wind.speed,
+                    icon: data.weather[0].icon,
+  
+  
+                };
+            } else {
+                dailyForecast[day].minTemp = Math.min(dailyForecast[day].minTemp, data.main.temp_min);
+                dailyForecast[day].maxTemp = Math.max(dailyForecast[day].maxTemp, data.main.temp_max);
+            }
+        });
+  
+        document.querySelector('.date-dayname').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long' });
+  
+        const date = new Date().toUTCString();
+        const extractedDateTime = date.slice(5, 16);
+        document.querySelector('.date-day').textContent = extractedDateTime.toLocaleString('en-US');
+  
+        const currentWeatherIconCode = dailyForecast[new Date().toLocaleDateString('en-US', { weekday: 'long' })].icon;
+        const weatherIconElement = document.querySelector('.weather-icon');
+        weatherIconElement.innerHTML = getWeatherIcon(currentWeatherIconCode);
+  
+        document.querySelector('.location').textContent = response.data.city.name;
+        document.querySelector('.weather-desc').textContent = dailyForecast[new Date().toLocaleDateString('en-US', { weekday: 'long' })].description.split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
+  
+        document.querySelector('.humidity .value').textContent = dailyForecast[new Date().toLocaleDateString('en-US', { weekday: 'long' })].humidity + ' %';
+        document.querySelector('.wind .value').textContent = dailyForecast[new Date().toLocaleDateString('en-US', { weekday: 'long' })].windSpeed + ' m/s';
+  
+  
+        const dayElements = document.querySelectorAll('.day-name');
+        const tempElements = document.querySelectorAll('.day-temp');
+        const iconElements = document.querySelectorAll('.day-icon');
+  
+        dayElements.forEach((dayElement, index) => {
+            const day = Object.keys(dailyForecast)[index];
+            const data = dailyForecast[day];
+            dayElement.textContent = day;
+            tempElements[index].textContent = `${Math.round(data.minTemp)}º / ${Math.round(data.maxTemp)}º`;
+            iconElements[index].innerHTML = getWeatherIcon(data.icon);
+        });
+  
+    } catch (error) {
+        console.error('Məlumat alınarkən səhv baş verdi:', error.message);
     }
-    
-}
-
-function handleRestartClick() {
-    buttons.forEach(button => {
-        button.textContent = '';
-    });
-    gameActive = true;
-    currentPlayer = 'X';
-    popup.classList.add('hide');
-}
-
-function checkWin() {
-    const winningCombos = [
-        [0, 1, 2], [3, 4, 5], [6, 7, 8], // rows
-        [0, 3, 6], [1, 4, 7], [2, 5, 8], // columns
-        [0, 4, 8], [2, 4, 6] // diagonals
-    ];
-
-    return winningCombos.some(combo => {
-        return buttons[combo[0]].textContent &&
-            buttons[combo[0]].textContent === buttons[combo[1]].textContent &&
-            buttons[combo[1]].textContent === buttons[combo[2]].textContent;
-    });
-}
-
-function checkDraw() {
-    return Array.from(buttons).every(button => button.textContent);
-}
-
-function togglePopup() {
-    popup.classList.toggle('hide');
-}
-
-// Event Listeners
-buttons.forEach(button => {
-    button.addEventListener('click', handleButtonClick);
-});
-
+  }
+  
+  function getWeatherIcon(iconCode) {
+    const iconBaseUrl = 'https://openweathermap.org/img/wn/';
+    const iconSize = '@2x.png';
+    return `<img src="${iconBaseUrl}${iconCode}${iconSize}" alt="Weather Icon">`;
+  }
+  
+  document.addEventListener("DOMContentLoaded", function () {
+    getWeather();
+    setInterval(getWeather, 900000);
+  });
+  
+  
+  
+  
